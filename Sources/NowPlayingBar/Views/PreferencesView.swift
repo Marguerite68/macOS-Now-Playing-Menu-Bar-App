@@ -2,21 +2,24 @@ import SwiftUI
 
 struct PreferencesView: View {
     @ObservedObject var settings: AppSettings
-    let mediaInfo: MediaInfo?
+    @ObservedObject var manager: NowPlayingManager
 
     var body: some View {
         TabView {
-            DisplayPreferencesView(settings: settings, mediaInfo: mediaInfo)
+            DisplayPreferencesView(settings: settings, mediaInfo: manager.mediaInfo)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
                 .tabItem {
                     Label("显示", systemImage: "menubar.rectangle")
                 }
 
             AboutPreferencesView()
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
                 .tabItem {
                     Label("关于", systemImage: "info.circle")
                 }
         }
-        .padding(20)
         .frame(width: 540, height: 360)
     }
 }
