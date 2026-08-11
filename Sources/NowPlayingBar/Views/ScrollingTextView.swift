@@ -87,12 +87,17 @@ final class MarqueeContainerView: NSView {
         )
     }
 
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: metrics.viewportWidth, height: 18)
+    }
+
     func update(
         text: String,
         metrics: MarqueeMetrics,
         isPlaying: Bool,
         resetID: UUID
     ) {
+        let sizeDidChange = self.metrics.viewportWidth != metrics.viewportWidth
         let shouldRestart = currentText != text
             || currentResetID != resetID
             || self.metrics.travelDistance != metrics.travelDistance
@@ -101,6 +106,10 @@ final class MarqueeContainerView: NSView {
         currentResetID = resetID
         self.metrics = metrics
         textField.stringValue = text
+
+        if sizeDidChange {
+            invalidateIntrinsicContentSize()
+        }
 
         needsLayout = true
         layoutSubtreeIfNeeded()

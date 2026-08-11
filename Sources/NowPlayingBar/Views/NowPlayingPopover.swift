@@ -3,6 +3,8 @@ import SwiftUI
 
 struct NowPlayingPopover: View {
     @ObservedObject var manager: NowPlayingManager
+    @ObservedObject var settings: AppSettings
+    @Environment(\.openWindow) private var openWindow
 
     private var metrics: MarqueeMetrics {
         .menuBar(text: manager.mediaInfo?.menuBarText ?? "—")
@@ -69,6 +71,12 @@ struct NowPlayingPopover: View {
                 .foregroundStyle(.secondary)
 
             HStack {
+                Button("偏好设置…") {
+                    openWindow(id: "preferences")
+                    NSApplication.shared.activate(ignoringOtherApps: true)
+                }
+                .keyboardShortcut(",", modifiers: .command)
+
                 Spacer()
                 Button("退出 NowPlayingBar") {
                     NSApplication.shared.terminate(nil)
