@@ -32,6 +32,6 @@ struct NowPlayingDetailsView: View {
             }
         }
         .padding(16)
-        .frame(width: 300, alignment: .leading)
+        .frame(width: 300, height: 116, alignment: .leading)
     }
 }

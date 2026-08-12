@@ -7,17 +7,17 @@ final class StatusBarController: NSObject, ObservableObject {
     private let settings: AppSettings
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let statusItemContentView = StatusItemContentView()
-    private let detailsPopover = NSPopover()
+    private let detailsPanel: DetailsPanelController
     private var preferencesWindowController: PreferencesWindowController?
     private var presentationObserver: StatusBarPresentationObserver?
 
     init(manager: NowPlayingManager, settings: AppSettings) {
         self.manager = manager
         self.settings = settings
+        detailsPanel = DetailsPanelController(manager: manager)
         super.init()
 
         configureStatusButton()
-        configureDetailsPopover()
         observePresentationChanges()
     }
 
@@ -38,13 +38,6 @@ final class StatusBarController: NSObject, ObservableObject {
         button.addSubview(statusItemContentView)
     }
 
-    private func configureDetailsPopover() {
-        detailsPopover.behavior = .transient
-        detailsPopover.contentViewController = NSHostingController(
-            rootView: NowPlayingDetailsView(manager: manager)
-        )
-    }
-
     private func observePresentationChanges() {
         presentationObserver = StatusBarPresentationObserver(
             manager: manager,
@@ -59,7 +52,7 @@ final class StatusBarController: NSObject, ObservableObject {
 
         statusItem.isVisible = !presentation.isHidden
         if presentation.isHidden {
-            detailsPopover.performClose(nil)
+            detailsPanel.close()
             return
         }
 
@@ -72,7 +65,7 @@ final class StatusBarController: NSObject, ObservableObject {
     @objc private func handleStatusButtonClick(_ sender: NSStatusBarButton) {
         switch NSApp.currentEvent?.type {
         case .rightMouseUp:
-            detailsPopover.performClose(nil)
+            detailsPanel.close()
             showContextMenu(from: sender)
         default:
             toggleDetailsPopover(from: sender)
@@ -80,15 +73,7 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     private func toggleDetailsPopover(from button: NSStatusBarButton) {
-        if detailsPopover.isShown {
-            detailsPopover.performClose(nil)
-        } else {
-            detailsPopover.show(
-                relativeTo: button.bounds,
-                of: button,
-                preferredEdge: .minY
-            )
-        }
+        detailsPanel.toggle(relativeTo: button)
     }
 
     private func showContextMenu(from button: NSStatusBarButton) {

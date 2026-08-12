@@ -10,14 +10,22 @@ struct AlbumArtworkView: View {
                let artworkImage = NSImage(contentsOf: artworkURL) {
                 Image(nsImage: artworkImage)
                     .resizable()
+                    .interpolation(.high)
+                    .antialiased(true)
                     .scaledToFill()
+                    .blur(radius: 0.25, opaque: false)
+                    .scaleEffect(1.02)
             } else if let artworkURL = mediaInfo.artworkURL {
                 AsyncImage(url: artworkURL) { phase in
                     switch phase {
                     case .success(let image):
                         image
                             .resizable()
+                            .interpolation(.high)
+                            .antialiased(true)
                             .scaledToFill()
+                            .blur(radius: 0.25, opaque: false)
+                            .scaleEffect(1.02)
                     default:
                         artworkPlaceholder
                     }
