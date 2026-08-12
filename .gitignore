@@ -3,3 +3,5 @@ spec.md
 Distribution_spec.md
 .build/
 build/
+CONTEXT.md
+docs/adr/0001-verify-apple-music-stream-quality-through-playback-ui.md

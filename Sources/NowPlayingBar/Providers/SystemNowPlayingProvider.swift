@@ -15,11 +15,13 @@ final class SystemNowPlayingProvider: MediaProvider {
     private let sources = [
         ScriptMediaSource(
             bundleIdentifier: "com.apple.Music",
-            scriptName: "ReadMusic"
+            scriptName: "ReadMusic",
+            exportsArtwork: true
         ),
         ScriptMediaSource(
             bundleIdentifier: "com.spotify.client",
-            scriptName: "ReadSpotify"
+            scriptName: "ReadSpotify",
+            exportsArtwork: false
         )
     ]
 
@@ -80,7 +82,15 @@ final class SystemNowPlayingProvider: MediaProvider {
             throw ScriptMediaError.missingScript(source.scriptName)
         }
 
-        let output = try await AppleScriptRunner.run(scriptURL: scriptURL)
+        let artworkOutputURL = source.exportsArtwork ? ArtworkCache.musicArtworkURL : nil
+        if let artworkOutputURL {
+            ArtworkCache.removeArtwork(at: artworkOutputURL)
+        }
+
+        let output = try await AppleScriptRunner.run(
+            scriptURL: scriptURL,
+            arguments: artworkOutputURL.map { [$0.path] } ?? []
+        )
         return MediaInfo(scriptOutput: output)
     }
 
@@ -94,6 +104,29 @@ final class SystemNowPlayingProvider: MediaProvider {
 private struct ScriptMediaSource {
     let bundleIdentifier: String
     let scriptName: String
+    let exportsArtwork: Bool
+}
+
+private enum ArtworkCache {
+    static var musicArtworkURL: URL {
+        let baseDirectory = FileManager.default.urls(
+            for: .cachesDirectory,
+            in: .userDomainMask
+        ).first ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        let artworkDirectory = baseDirectory.appendingPathComponent(
+            "NowPlayingBar/Artwork",
+            isDirectory: true
+        )
+        try? FileManager.default.createDirectory(
+            at: artworkDirectory,
+            withIntermediateDirectories: true
+        )
+        return artworkDirectory.appendingPathComponent("apple-music-current-artwork")
+    }
+
+    static func removeArtwork(at url: URL) {
+        try? FileManager.default.removeItem(at: url)
+    }
 }
 
 private enum ScriptMediaError: LocalizedError {
@@ -111,14 +144,14 @@ private enum ScriptMediaError: LocalizedError {
 }
 
 private enum AppleScriptRunner {
-    nonisolated static func run(scriptURL: URL) async throws -> String {
+    nonisolated static func run(scriptURL: URL, arguments: [String]) async throws -> String {
         try await Task.detached(priority: .utility) {
             let process = Process()
             let standardOutput = Pipe()
             let standardError = Pipe()
 
             process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-            process.arguments = [scriptURL.path]
+            process.arguments = [scriptURL.path] + arguments
             process.standardOutput = standardOutput
             process.standardError = standardError
 
@@ -146,10 +179,10 @@ private extension MediaInfo {
 
         let fields = scriptOutput.split(
             separator: "\u{001E}",
-            maxSplits: 5,
+            maxSplits: 6,
             omittingEmptySubsequences: false
         ).map(String.init)
-        guard fields.count == 6, !fields[3].isEmpty else { return nil }
+        guard (fields.count == 6 || fields.count == 7), !fields[3].isEmpty else { return nil }
 
         let application: MediaApplication
         switch fields[0] {
@@ -167,13 +200,29 @@ private extension MediaInfo {
         }
 
         let fallbackID = [fields[3], fields[4], fields[5]].joined(separator: "|")
+        let artworkURL = fields.count == 7 ? Self.artworkURL(from: fields[6]) : nil
         self.init(
             id: "\(fields[0]):\(fields[2].isEmpty ? fallbackID : fields[2])",
             title: fields[3],
             artist: fields[4].isEmpty ? nil : fields[4],
             album: fields[5].isEmpty ? nil : fields[5],
+            artworkURL: artworkURL,
             application: application,
             playbackState: playbackState
         )
+    }
+
+    private static func artworkURL(from location: String) -> URL? {
+        guard !location.isEmpty else { return nil }
+        if location.hasPrefix("/") {
+            let url = URL(fileURLWithPath: location)
+            return FileManager.default.fileExists(atPath: url.path) ? url : nil
+        }
+
+        guard let url = URL(string: location),
+              ["http", "https"].contains(url.scheme?.lowercased() ?? "") else {
+            return nil
+        }
+        return url
     }
 }

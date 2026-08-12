@@ -6,20 +6,25 @@ struct NowPlayingDetailsView: View {
     var body: some View {
         Group {
             if let mediaInfo = manager.mediaInfo {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(mediaInfo.title)
-                        .font(.headline)
-                        .lineLimit(2)
-                    Text(mediaInfo.artist ?? "未知艺术家")
-                        .foregroundStyle(.secondary)
-                    if let album = mediaInfo.album, !album.isEmpty {
-                        Text(album)
+                HStack(alignment: .center, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(mediaInfo.title)
+                            .font(.headline)
+                            .lineLimit(2)
+                        Text(mediaInfo.artist ?? "未知艺术家")
+                            .foregroundStyle(.secondary)
+                        if let album = mediaInfo.album, !album.isEmpty {
+                            Text(album)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text("\(mediaInfo.application.rawValue) · \(mediaInfo.playbackState.displayName)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    Text("\(mediaInfo.application.rawValue) · \(mediaInfo.playbackState.displayName)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    AlbumArtworkView(mediaInfo: mediaInfo)
                 }
             } else {
                 Text("当前没有可读取的媒体")

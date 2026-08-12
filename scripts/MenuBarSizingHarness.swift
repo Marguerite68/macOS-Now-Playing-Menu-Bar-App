@@ -14,14 +14,21 @@ struct MenuBarSizingHarness {
             exit(1)
         }
 
+        let artworkURL = URL(string: "https://example.com/cover.jpg")!
         let mediaInfo = MediaInfo(
             id: "display-mode-test",
             title: "Blinding Lights",
             artist: "The Weeknd",
             album: "After Hours",
+            artworkURL: artworkURL,
             application: .appleMusic,
             playbackState: .playing
         )
+
+        guard mediaInfo.replacingPlaybackState(with: .paused).artworkURL == artworkURL else {
+            fputs("FAIL: changing playback state discarded the artwork URL\n", stderr)
+            exit(1)
+        }
 
         guard MenuBarDisplayMode.iconOnly.text(for: mediaInfo) == nil else {
             fputs("FAIL: icon-only mode emitted text\n", stderr)

@@ -29,8 +29,27 @@ struct MediaInfo: Identifiable, Equatable, Sendable {
     let title: String
     let artist: String?
     let album: String?
+    let artworkURL: URL?
     let application: MediaApplication
     let playbackState: PlaybackState
+
+    init(
+        id: String,
+        title: String,
+        artist: String?,
+        album: String?,
+        artworkURL: URL? = nil,
+        application: MediaApplication,
+        playbackState: PlaybackState
+    ) {
+        self.id = id
+        self.title = title
+        self.artist = artist
+        self.album = album
+        self.artworkURL = artworkURL
+        self.application = application
+        self.playbackState = playbackState
+    }
 
     var menuBarText: String {
         guard let artist, !artist.isEmpty else { return title }
@@ -43,6 +62,7 @@ struct MediaInfo: Identifiable, Equatable, Sendable {
             title: title,
             artist: artist,
             album: album,
+            artworkURL: artworkURL,
             application: application,
             playbackState: state
         )
