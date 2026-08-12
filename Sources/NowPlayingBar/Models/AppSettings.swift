@@ -29,9 +29,9 @@ enum MenuBarDisplayMode: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    func text(for mediaInfo: MediaInfo?, iconOnlyWhenNoMedia: Bool) -> String? {
+    func text(for mediaInfo: MediaInfo?) -> String? {
         guard self != .iconOnly else { return nil }
-        guard let mediaInfo else { return iconOnlyWhenNoMedia ? nil : "—" }
+        guard let mediaInfo else { return nil }
 
         switch self {
         case .iconOnly:
@@ -89,7 +89,7 @@ enum MarqueeSettingRange {
 final class AppSettings: ObservableObject {
     private enum Key {
         static let displayMode = "menuBarDisplayMode"
-        static let iconOnlyWhenNoMedia = "iconOnlyWhenNoMedia"
+        static let hideStatusItemWhenNoMedia = "hideStatusItemWhenNoMedia"
         static let maximumCharacters = "maximumCharacters"
         static let scrollingEnabled = "scrollingEnabled"
         static let marqueeMode = "marqueeMode"
@@ -101,8 +101,8 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(displayMode.rawValue, forKey: Key.displayMode) }
     }
 
-    @Published var iconOnlyWhenNoMedia: Bool {
-        didSet { defaults.set(iconOnlyWhenNoMedia, forKey: Key.iconOnlyWhenNoMedia) }
+    @Published var hideStatusItemWhenNoMedia: Bool {
+        didSet { defaults.set(hideStatusItemWhenNoMedia, forKey: Key.hideStatusItemWhenNoMedia) }
     }
 
     @Published var maximumCharacters: Int {
@@ -132,10 +132,10 @@ final class AppSettings: ObservableObject {
         displayMode = defaults.string(forKey: Key.displayMode)
             .flatMap(MenuBarDisplayMode.init(rawValue:)) ?? .titleAndArtist
 
-        if defaults.object(forKey: Key.iconOnlyWhenNoMedia) == nil {
-            iconOnlyWhenNoMedia = true
+        if defaults.object(forKey: Key.hideStatusItemWhenNoMedia) == nil {
+            hideStatusItemWhenNoMedia = false
         } else {
-            iconOnlyWhenNoMedia = defaults.bool(forKey: Key.iconOnlyWhenNoMedia)
+            hideStatusItemWhenNoMedia = defaults.bool(forKey: Key.hideStatusItemWhenNoMedia)
         }
 
         let storedMaximumCharacters = defaults.integer(forKey: Key.maximumCharacters)
@@ -159,7 +159,7 @@ final class AppSettings: ObservableObject {
 
     init(
         transientDisplayMode: MenuBarDisplayMode,
-        iconOnlyWhenNoMedia: Bool,
+        hideStatusItemWhenNoMedia: Bool = false,
         maximumCharacters: Int = 20,
         scrollingEnabled: Bool = true,
         marqueeMode: MarqueeMode = .loop,
@@ -168,7 +168,7 @@ final class AppSettings: ObservableObject {
     ) {
         defaults = .standard
         displayMode = transientDisplayMode
-        self.iconOnlyWhenNoMedia = iconOnlyWhenNoMedia
+        self.hideStatusItemWhenNoMedia = hideStatusItemWhenNoMedia
         self.maximumCharacters = maximumCharacters
         self.scrollingEnabled = scrollingEnabled
         self.marqueeMode = marqueeMode

@@ -23,44 +23,57 @@ struct MenuBarSizingHarness {
             playbackState: .playing
         )
 
-        guard MenuBarDisplayMode.iconOnly.text(
-            for: mediaInfo,
-            iconOnlyWhenNoMedia: true
-        ) == nil else {
+        guard MenuBarDisplayMode.iconOnly.text(for: mediaInfo) == nil else {
             fputs("FAIL: icon-only mode emitted text\n", stderr)
             exit(1)
         }
 
-        guard MenuBarDisplayMode.title.text(
-            for: mediaInfo,
-            iconOnlyWhenNoMedia: true
-        ) == "Blinding Lights" else {
+        guard MenuBarDisplayMode.title.text(for: mediaInfo) == "Blinding Lights" else {
             fputs("FAIL: title mode did not emit the title\n", stderr)
             exit(1)
         }
 
-        guard MenuBarDisplayMode.titleAndArtist.text(
-            for: mediaInfo,
-            iconOnlyWhenNoMedia: true
-        ) == "Blinding Lights · The Weeknd" else {
+        guard MenuBarDisplayMode.titleAndArtist.text(for: mediaInfo)
+            == "Blinding Lights · The Weeknd" else {
             fputs("FAIL: title-and-artist mode emitted the wrong text\n", stderr)
             exit(1)
         }
 
-        guard MenuBarDisplayMode.title.text(
-            for: nil,
-            iconOnlyWhenNoMedia: true
-        ) == nil else {
-            fputs("FAIL: no-media icon-only policy emitted text\n", stderr)
+        guard MenuBarDisplayMode.title.text(for: nil) == nil else {
+            fputs("FAIL: no-media state emitted placeholder text\n", stderr)
+            exit(1)
+        }
+
+        let visibleIdlePresentation = StatusBarPresentation(
+            mediaInfo: nil,
+            displayMode: .title,
+            hideStatusItemWhenNoMedia: false
+        )
+        guard !visibleIdlePresentation.isHidden,
+              visibleIdlePresentation.iconName == "zzz",
+              visibleIdlePresentation.statusItemLength == 24 else {
+            fputs("FAIL: idle status item did not retain its icon\n", stderr)
+            exit(1)
+        }
+
+        let hiddenIdlePresentation = StatusBarPresentation(
+            mediaInfo: nil,
+            displayMode: .title,
+            hideStatusItemWhenNoMedia: true
+        )
+        guard hiddenIdlePresentation.isHidden,
+              hiddenIdlePresentation.statusItemLength == 0 else {
+            fputs("FAIL: hide-when-idle setting did not hide the status item\n", stderr)
             exit(1)
         }
 
         let presentation = StatusBarPresentation(
             mediaInfo: mediaInfo,
             displayMode: .titleAndArtist,
-            iconOnlyWhenNoMedia: false
+            hideStatusItemWhenNoMedia: false
         )
         guard presentation.title == "Blinding Lights · The Weeknd",
+              presentation.iconName == "music.note",
               presentation.shouldScroll,
               presentation.statusItemLength > 100 else {
             fputs("FAIL: status-item presentation omitted the title\n", stderr)
@@ -70,7 +83,7 @@ struct MenuBarSizingHarness {
         let truncatedPresentation = StatusBarPresentation(
             mediaInfo: mediaInfo,
             displayMode: .titleAndArtist,
-            iconOnlyWhenNoMedia: false,
+            hideStatusItemWhenNoMedia: false,
             maximumCharacters: 10,
             scrollingEnabled: false
         )
@@ -118,13 +131,33 @@ struct MenuBarSizingHarness {
         let manager = NowPlayingManager(provider: provider)
         let settings = AppSettings(
             transientDisplayMode: .titleAndArtist,
-            iconOnlyWhenNoMedia: false
+            hideStatusItemWhenNoMedia: false
         )
         var observedPresentation: StatusBarPresentation?
         let observer = StatusBarPresentationObserver(
             manager: manager,
             settings: settings
         ) { observedPresentation = $0 }
+
+        guard observedPresentation?.isHidden == false else {
+            fputs("FAIL: default idle setting unexpectedly hid the status item\n", stderr)
+            exit(1)
+        }
+
+        let isolatedDefaults = UserDefaults(suiteName: "NowPlayingBar-test-\(UUID().uuidString)")!
+        let defaultSettings = AppSettings(defaults: isolatedDefaults)
+        guard defaultSettings.hideStatusItemWhenNoMedia == false else {
+            fputs("FAIL: hide-when-idle setting is not off by default\n", stderr)
+            exit(1)
+        }
+
+        settings.hideStatusItemWhenNoMedia = true
+        guard observedPresentation?.isHidden == true else {
+            fputs("FAIL: live hide-when-idle setting used a stale value\n", stderr)
+            exit(1)
+        }
+
+        settings.hideStatusItemWhenNoMedia = false
 
         provider.publish(mediaInfo)
         guard observedPresentation?.title == "Blinding Lights · The Weeknd",

@@ -57,6 +57,12 @@ final class StatusBarController: NSObject, ObservableObject {
     private func updateStatusButton(with presentation: StatusBarPresentation) {
         guard let button = statusItem.button else { return }
 
+        statusItem.isVisible = !presentation.isHidden
+        if presentation.isHidden {
+            detailsPopover.performClose(nil)
+            return
+        }
+
         button.toolTip = presentation.accessibilityLabel
         statusItem.length = presentation.statusItemLength
         statusItemContentView.frame = button.bounds

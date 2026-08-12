@@ -15,8 +15,18 @@ if rg -q 'TextField\("字符数"' "$SOURCE_FILE"; then
     exit 1
 fi
 
-if ! rg -Uq 'HStack\(spacing: 8\) \{\n\s*Text\("最多字符数"\)' "$SOURCE_FILE"; then
+if ! rg -Uq 'HStack\(spacing: 8\) \{\n\s*Text\(".*字符数限制"\)' "$SOURCE_FILE"; then
     echo 'FAIL: maximum-character controls no longer have the expected horizontal layout'
+    exit 1
+fi
+
+if ! rg -Uq 'Text\(".*字符数限制"\)\n\s*\.font\(\.body\)' "$SOURCE_FILE"; then
+    echo 'FAIL: maximum-character label does not explicitly use the standard body font'
+    exit 1
+fi
+
+if ! rg -q 'clearMaximumCharactersFocus\(\)' "$SOURCE_FILE"; then
+    echo 'FAIL: maximum-character input focus is not cleared when the preferences view appears'
     exit 1
 fi
 

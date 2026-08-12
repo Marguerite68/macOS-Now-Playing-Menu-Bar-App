@@ -42,7 +42,7 @@ private struct DisplayPreferencesView: View {
         return StatusBarPresentation(
             mediaInfo: previewMedia,
             displayMode: settings.displayMode,
-            iconOnlyWhenNoMedia: settings.iconOnlyWhenNoMedia,
+            hideStatusItemWhenNoMedia: settings.hideStatusItemWhenNoMedia,
             maximumCharacters: settings.maximumCharacters,
             scrollingEnabled: settings.scrollingEnabled,
             marqueeMode: settings.marqueeMode,
@@ -68,8 +68,8 @@ private struct DisplayPreferencesView: View {
                 .pickerStyle(.radioGroup)
 
                 Toggle(
-                    "未读取到媒体时仅显示图标",
-                    isOn: $settings.iconOnlyWhenNoMedia
+                    "未读取到媒体时隐藏图标",
+                    isOn: $settings.hideStatusItemWhenNoMedia
                 )
 
                 Picker("字体粗细", selection: $settings.fontWeight) {
@@ -83,6 +83,7 @@ private struct DisplayPreferencesView: View {
             Section("滚动显示") {
                 HStack(spacing: 8) {
                     Text("显示字符数限制")
+                        .font(.body)
                     Spacer(minLength: 16)
 
                     Button {
@@ -178,6 +179,12 @@ private struct DisplayPreferencesView: View {
             }
         }
         .formStyle(.grouped)
+        .onAppear {
+            clearMaximumCharactersFocus()
+        }
+        .onDisappear {
+            isMaximumCharactersFieldFocused = false
+        }
         .onChange(of: isMaximumCharactersFieldFocused) { isFocused in
             if !isFocused {
                 commitMaximumCharactersInput()
@@ -194,6 +201,13 @@ private struct DisplayPreferencesView: View {
         guard let value = Int(maximumCharactersInput) else { return false }
         return (MarqueeSettingRange.minimumCharacters...MarqueeSettingRange.maximumCharacters)
             .contains(value)
+    }
+
+    private func clearMaximumCharactersFocus() {
+        isMaximumCharactersFieldFocused = false
+        DispatchQueue.main.async {
+            isMaximumCharactersFieldFocused = false
+        }
     }
 
     private func applyValidMaximumCharacters(_ input: String) {

@@ -4,6 +4,7 @@ import Combine
 struct StatusBarPresentation {
     let title: String
     let fullText: String
+    let isHidden: Bool
     let iconName: String
     let accessibilityLabel: String
     let statusItemLength: CGFloat
@@ -18,17 +19,15 @@ struct StatusBarPresentation {
     init(
         mediaInfo: MediaInfo?,
         displayMode: MenuBarDisplayMode,
-        iconOnlyWhenNoMedia: Bool,
+        hideStatusItemWhenNoMedia: Bool = false,
         maximumCharacters: Int = 20,
         scrollingEnabled: Bool = true,
         marqueeMode: MarqueeMode = .loop,
         scrollingSpeed: Double = 28,
         fontWeight: MenuBarFontWeight = .medium
     ) {
-        fullText = displayMode.text(
-            for: mediaInfo,
-            iconOnlyWhenNoMedia: iconOnlyWhenNoMedia
-        ) ?? ""
+        fullText = displayMode.text(for: mediaInfo) ?? ""
+        isHidden = mediaInfo == nil && hideStatusItemWhenNoMedia
         title = MenuBarTextLimiter.displayedText(
             fullText,
             maximumCharacters: maximumCharacters,
@@ -42,18 +41,25 @@ struct StatusBarPresentation {
         self.scrollingSpeed = CGFloat(scrollingSpeed)
         self.fontWeight = fontWeight
 
-        switch mediaInfo?.playbackState {
-        case .paused:
-            iconName = "pause.fill"
-        case .stopped:
-            iconName = "stop.fill"
-        default:
-            iconName = "music.note"
+        if mediaInfo == nil {
+            iconName = "zzz"
+        } else {
+            switch mediaInfo?.playbackState {
+            case .paused:
+                iconName = "pause.fill"
+            case .stopped:
+                iconName = "stop.fill"
+            default:
+                iconName = "music.note"
+            }
         }
 
         accessibilityLabel = fullText.isEmpty ? "NowPlayingBar" : "NowPlayingBar: \(fullText)"
 
-        if title.isEmpty {
+        if isHidden {
+            textViewportWidth = 0
+            statusItemLength = 0
+        } else if title.isEmpty {
             textViewportWidth = 0
             statusItemLength = 24
         } else {
@@ -95,7 +101,7 @@ final class StatusBarPresentationObserver {
     ) {
         let displaySettings = Publishers.CombineLatest4(
             settings.$displayMode,
-            settings.$iconOnlyWhenNoMedia,
+            settings.$hideStatusItemWhenNoMedia,
             settings.$maximumCharacters,
             settings.$scrollingEnabled
         )
@@ -114,7 +120,7 @@ final class StatusBarPresentationObserver {
             StatusBarPresentation(
                 mediaInfo: mediaInfo,
                 displayMode: displaySettings.0,
-                iconOnlyWhenNoMedia: displaySettings.1,
+                hideStatusItemWhenNoMedia: displaySettings.1,
                 maximumCharacters: displaySettings.2,
                 scrollingEnabled: displaySettings.3,
                 marqueeMode: animationSettings.0,
