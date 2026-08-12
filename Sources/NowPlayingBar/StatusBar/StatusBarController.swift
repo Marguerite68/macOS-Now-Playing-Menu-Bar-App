@@ -6,6 +6,7 @@ final class StatusBarController: NSObject, ObservableObject {
     private let manager: NowPlayingManager
     private let settings: AppSettings
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+    private let statusItemContentView = StatusItemContentView()
     private let detailsPopover = NSPopover()
     private var preferencesWindowController: PreferencesWindowController?
     private var presentationObserver: StatusBarPresentationObserver?
@@ -30,9 +31,11 @@ final class StatusBarController: NSObject, ObservableObject {
         button.target = self
         button.action = #selector(handleStatusButtonClick(_:))
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        button.font = .menuBarFont(ofSize: 0)
-        button.lineBreakMode = .byTruncatingTail
-        button.image?.isTemplate = true
+        button.image = nil
+        button.title = ""
+        statusItemContentView.frame = button.bounds
+        statusItemContentView.autoresizingMask = [.width, .height]
+        button.addSubview(statusItemContentView)
     }
 
     private func configureDetailsPopover() {
@@ -54,17 +57,10 @@ final class StatusBarController: NSObject, ObservableObject {
     private func updateStatusButton(with presentation: StatusBarPresentation) {
         guard let button = statusItem.button else { return }
 
-        let image = NSImage(
-            systemSymbolName: presentation.iconName,
-            accessibilityDescription: "NowPlayingBar"
-        )
-        image?.isTemplate = true
-
-        button.image = image
-        button.title = presentation.title
-        button.imagePosition = presentation.title.isEmpty ? .imageOnly : .imageLeading
         button.toolTip = presentation.accessibilityLabel
         statusItem.length = presentation.statusItemLength
+        statusItemContentView.frame = button.bounds
+        statusItemContentView.update(with: presentation)
     }
 
     @objc private func handleStatusButtonClick(_ sender: NSStatusBarButton) {
@@ -129,7 +125,6 @@ final class StatusBarController: NSObject, ObservableObject {
         if preferencesWindowController == nil {
             preferencesWindowController = PreferencesWindowController(
                 settings: settings,
-                mediaInfo: manager.mediaInfo,
                 manager: manager
             )
         }
@@ -145,7 +140,7 @@ final class StatusBarController: NSObject, ObservableObject {
 
 @MainActor
 private final class PreferencesWindowController: NSWindowController {
-    init(settings: AppSettings, mediaInfo: MediaInfo?, manager: NowPlayingManager) {
+    init(settings: AppSettings, manager: NowPlayingManager) {
         let rootView = PreferencesView(settings: settings, manager: manager)
         let hostingController = NSHostingController(rootView: rootView)
         let window = NSWindow(contentViewController: hostingController)
@@ -153,7 +148,7 @@ private final class PreferencesWindowController: NSWindowController {
         window.title = "NowPlayingBar 偏好设置"
         window.styleMask = [.titled, .closable, .miniaturizable]
         window.isReleasedWhenClosed = false
-        window.setContentSize(NSSize(width: 540, height: 360))
+        window.setContentSize(NSSize(width: 540, height: 500))
         window.center()
 
         super.init(window: window)
