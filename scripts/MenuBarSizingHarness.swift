@@ -179,6 +179,37 @@ struct MenuBarSizingHarness {
             exit(1)
         }
 
+        let shortDetailsMedia = MediaInfo(
+            id: "short-details",
+            title: "Year N",
+            artist: "Mii",
+            album: "Year N - Single",
+            application: .appleMusic,
+            playbackState: .playing
+        )
+        let longDetailsMedia = MediaInfo(
+            id: "long-details",
+            title: String(repeating: "A long title for the details panel ", count: 4),
+            artist: "A long artist name for the details panel",
+            album: "A long album name for the details panel",
+            application: .appleMusic,
+            playbackState: .playing
+        )
+        let shortDetailsWidth = DetailsPanelLayout.width(
+            for: shortDetailsMedia,
+            recognitionEnabled: true
+        )
+        let longDetailsWidth = DetailsPanelLayout.width(
+            for: longDetailsMedia,
+            recognitionEnabled: true
+        )
+        guard shortDetailsWidth < longDetailsWidth,
+              longDetailsWidth == DetailsPanelLayout.maximumWidth,
+              DetailsPanelLayout.metadataArtworkSpacing == 16 else {
+            fputs("FAIL: details-panel width does not adapt to metadata length\n", stderr)
+            exit(1)
+        }
+
         let losslessQuality = VerifiedAudioQuality(
             tier: .lossless,
             sampleRate: 44_100,

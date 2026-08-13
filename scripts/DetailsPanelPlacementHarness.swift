@@ -21,7 +21,7 @@ struct DetailsPanelPlacementHarness {
         let panelFrame = DetailsPanelPlacement.panelFrame(
             buttonFrame: statusButtonFrame,
             screenVisibleFrame: selectedDisplay,
-            contentSize: CGSize(width: 300, height: 116)
+            contentSize: CGSize(width: 390, height: 116)
         )
 
         precondition(

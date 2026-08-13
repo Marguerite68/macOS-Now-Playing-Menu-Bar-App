@@ -15,11 +15,9 @@ final class DetailsPanelController: NSObject {
         settings: AppSettings,
         audioQualityManager: AudioQualityManager
     ) {
-        contentSize = NSSize(
-            width: 300,
-            height: DetailsPanelLayout.height(
-                recognitionEnabled: settings.audioQualityRecognitionEnabled
-            )
+        contentSize = DetailsPanelLayout.contentSize(
+            for: manager.mediaInfo,
+            recognitionEnabled: settings.audioQualityRecognitionEnabled
         )
         panel = NSPanel(
             contentRect: NSRect(origin: .zero, size: contentSize),
@@ -61,21 +59,40 @@ final class DetailsPanelController: NSObject {
         panel.level = .popUpMenu
         panel.collectionBehavior = [.transient, .stationary, .fullScreenAuxiliary]
 
-        sizeCancellable = settings.$audioQualityRecognitionEnabled
-            .removeDuplicates()
-            .sink { [weak self] enabled in
-                self?.updateContentHeight(
-                    DetailsPanelLayout.height(recognitionEnabled: enabled)
-                )
-            }
+        sizeCancellable = Publishers.CombineLatest(
+            manager.$mediaInfo,
+            settings.$audioQualityRecognitionEnabled
+        )
+        .map { mediaInfo, recognitionEnabled in
+            DetailsPanelLayout.contentSize(
+                for: mediaInfo,
+                recognitionEnabled: recognitionEnabled
+            )
+        }
+        .removeDuplicates()
+        .sink { [weak self] size in
+            self?.updateContentSize(size)
+        }
     }
 
-    private func updateContentHeight(_ height: CGFloat) {
-        guard contentSize.height != height else { return }
-        contentSize.height = height
+    private func updateContentSize(_ size: NSSize) {
+        guard contentSize != size else { return }
+        let previousSize = contentSize
+        contentSize = size
         var frame = panel.frame
-        frame.origin.y -= height - frame.height
-        frame.size.height = height
+        frame.origin.x -= (size.width - previousSize.width) / 2
+        frame.origin.y -= size.height - previousSize.height
+        frame.size = size
+        if let visibleFrame = panel.screen?.visibleFrame ?? NSScreen.main?.visibleFrame {
+            frame.origin.x = min(
+                max(frame.origin.x, visibleFrame.minX),
+                visibleFrame.maxX - size.width
+            )
+            frame.origin.y = min(
+                max(frame.origin.y, visibleFrame.minY),
+                visibleFrame.maxY - size.height
+            )
+        }
         panel.setFrame(frame, display: panel.isVisible, animate: panel.isVisible)
         panel.contentView?.frame = NSRect(origin: .zero, size: contentSize)
     }

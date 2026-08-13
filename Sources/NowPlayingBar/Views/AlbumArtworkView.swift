@@ -37,7 +37,7 @@ struct AlbumArtworkView: View {
         }
         .id(mediaInfo.id)
         .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
         .accessibilityLabel("\(mediaInfo.title) 的歌曲封面")
     }
 

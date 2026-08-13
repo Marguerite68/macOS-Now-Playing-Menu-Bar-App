@@ -15,6 +15,13 @@ struct NowPlayingDetailsView: View {
         )
     }
 
+    private var panelWidth: CGFloat {
+        DetailsPanelLayout.width(
+            for: manager.mediaInfo,
+            recognitionEnabled: settings.audioQualityRecognitionEnabled
+        )
+    }
+
     var body: some View {
         Group {
             if let mediaInfo = manager.mediaInfo {
@@ -63,7 +70,7 @@ struct NowPlayingDetailsView: View {
             )
         )
         .frame(
-            width: 300,
+            width: panelWidth,
             height: DetailsPanelLayout.height(
                 recognitionEnabled: settings.audioQualityRecognitionEnabled
             ),
@@ -87,14 +94,18 @@ struct NowPlayingDetailsView: View {
         _ reason: AudioQualityUnavailableReason
     ) -> some View {
         HStack(spacing: 6) {
-            Text("未获得音质信息")
+            Text(reason == .noPlaybackEvidence ? "高质量" : "未获得音质信息")
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Button("为什么会这样？") {
+            Button {
                 showsQualityExplanation.toggle()
+            } label: {
+                Image(systemName: "questionmark.circle")
+                    .font(.caption)
             }
-            .buttonStyle(.link)
-            .font(.caption)
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("为什么没有音质信息")
             .popover(isPresented: $showsQualityExplanation, arrowEdge: .bottom) {
                 QualityExplanationView(reason: reason)
             }
@@ -158,9 +169,13 @@ struct QualityBadgeView: View {
 private struct QualityExplanationView: View {
     let reason: AudioQualityUnavailableReason
 
+    private var title: String {
+        reason == .noPlaybackEvidence ? "关于“高质量”" : "为什么没有音质信息？"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("为什么没有音质信息？")
+            Text(title)
                 .font(.headline)
             Text(reason.explanation)
                 .font(.callout)
