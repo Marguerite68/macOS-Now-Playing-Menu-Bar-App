@@ -15,7 +15,7 @@ struct NowPlayingDetailsView: View {
         )
     }
 
-    private var panelWidth: CGFloat {
+    private var mediaPanelWidth: CGFloat {
         DetailsPanelLayout.width(
             for: manager.mediaInfo,
             recognitionEnabled: settings.audioQualityRecognitionEnabled
@@ -23,59 +23,62 @@ struct NowPlayingDetailsView: View {
     }
 
     var body: some View {
-        Group {
-            if let mediaInfo = manager.mediaInfo {
-                HStack(alignment: .center, spacing: 16) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(mediaInfo.title)
-                            .font(.headline)
-                            .lineLimit(2)
-                        Text(mediaInfo.artist ?? "未知艺术家")
-                            .foregroundStyle(.secondary)
-                        if let album = mediaInfo.album, !album.isEmpty {
-                            Text(album)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Text("\(mediaInfo.application.rawValue) · \(mediaInfo.playbackState.displayName)")
+        if let mediaInfo = manager.mediaInfo {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(mediaInfo.title)
+                        .font(.headline)
+                        .lineLimit(2)
+                    Text(mediaInfo.artist ?? "未知艺术家")
+                        .foregroundStyle(.secondary)
+                    if let album = mediaInfo.album, !album.isEmpty {
+                        Text(album)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-
-                        switch qualityState {
-                        case .hidden:
-                            EmptyView()
-                        case .verified(let quality):
-                            verifiedQualityDetails(quality)
-                        case .unavailable(let reason):
-                            unavailableQualityDetails(reason)
-                        }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    Text("\(mediaInfo.application.rawValue) · \(mediaInfo.playbackState.displayName)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
 
-                    AlbumArtworkView(
-                        mediaInfo: mediaInfo,
-                        size: DetailsPanelLayout.artworkSize(
-                            recognitionEnabled: settings.audioQualityRecognitionEnabled
-                        )
-                    )
+                    switch qualityState {
+                    case .hidden:
+                        EmptyView()
+                    case .verified(let quality):
+                        verifiedQualityDetails(quality)
+                    case .unavailable(let reason):
+                        unavailableQualityDetails(reason)
+                    }
                 }
-            } else {
-                Text("当前没有可读取的媒体")
-                    .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                AlbumArtworkView(
+                    mediaInfo: mediaInfo,
+                    size: DetailsPanelLayout.artworkSize(
+                        recognitionEnabled: settings.audioQualityRecognitionEnabled
+                    )
+                )
             }
-        }
-        .padding(
-            DetailsPanelLayout.padding(
-                recognitionEnabled: settings.audioQualityRecognitionEnabled
+            .padding(
+                DetailsPanelLayout.padding(
+                    recognitionEnabled: settings.audioQualityRecognitionEnabled
+                )
             )
-        )
-        .frame(
-            width: panelWidth,
-            height: DetailsPanelLayout.height(
-                recognitionEnabled: settings.audioQualityRecognitionEnabled
-            ),
-            alignment: .topLeading
-        )
+            .frame(
+                width: mediaPanelWidth,
+                height: DetailsPanelLayout.height(
+                    recognitionEnabled: settings.audioQualityRecognitionEnabled
+                ),
+                alignment: .topLeading
+            )
+        } else {
+            Text(DetailsPanelLayout.idleMessage)
+                .foregroundStyle(.secondary)
+                .frame(
+                    width: DetailsPanelLayout.idleContentSize.width,
+                    height: DetailsPanelLayout.idleContentSize.height,
+                    alignment: .center
+                )
+        }
     }
 
     @ViewBuilder

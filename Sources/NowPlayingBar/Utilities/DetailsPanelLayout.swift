@@ -3,13 +3,25 @@ import AppKit
 enum DetailsPanelLayout {
     static let maximumWidth: CGFloat = 390
     static let metadataArtworkSpacing: CGFloat = 16
+    static let idleMessage = "当前没有可读取的媒体"
+    static let idleContentSize: NSSize = {
+        let messageSize = (idleMessage as NSString).size(
+            withAttributes: [.font: NSFont.systemFont(ofSize: 13)]
+        )
+        return NSSize(
+            width: ceil(messageSize.width + 40),
+            height: ceil(messageSize.height + 36)
+        )
+    }()
     private static let minimumTextWidth: CGFloat = 130
 
     static func contentSize(
         for mediaInfo: MediaInfo?,
         recognitionEnabled: Bool
     ) -> NSSize {
-        NSSize(
+        guard mediaInfo != nil else { return idleContentSize }
+
+        return NSSize(
             width: width(for: mediaInfo, recognitionEnabled: recognitionEnabled),
             height: height(recognitionEnabled: recognitionEnabled)
         )
@@ -19,6 +31,8 @@ enum DetailsPanelLayout {
         for mediaInfo: MediaInfo?,
         recognitionEnabled: Bool
     ) -> CGFloat {
+        guard mediaInfo != nil else { return idleContentSize.width }
+
         let padding = padding(recognitionEnabled: recognitionEnabled)
         let artworkWidth = artworkSize(recognitionEnabled: recognitionEnabled)
         let maximumTextWidth = maximumWidth

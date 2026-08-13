@@ -210,6 +210,22 @@ struct MenuBarSizingHarness {
             exit(1)
         }
 
+        let idleDetailsSize = DetailsPanelLayout.contentSize(
+            for: nil,
+            recognitionEnabled: false
+        )
+        let accessibilityIdleDetailsSize = DetailsPanelLayout.contentSize(
+            for: nil,
+            recognitionEnabled: true
+        )
+        guard idleDetailsSize == DetailsPanelLayout.idleContentSize,
+              accessibilityIdleDetailsSize == idleDetailsSize,
+              idleDetailsSize.width < shortDetailsWidth,
+              idleDetailsSize.height < DetailsPanelLayout.height(recognitionEnabled: false) else {
+            fputs("FAIL: idle details panel does not shrink to its centered message\n", stderr)
+            exit(1)
+        }
+
         let losslessQuality = VerifiedAudioQuality(
             tier: .lossless,
             sampleRate: 44_100,
