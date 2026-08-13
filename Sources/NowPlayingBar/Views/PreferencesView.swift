@@ -3,10 +3,15 @@ import SwiftUI
 struct PreferencesView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var manager: NowPlayingManager
+    @ObservedObject var audioQualityManager: AudioQualityManager
 
     var body: some View {
         TabView {
-            DisplayPreferencesView(settings: settings, mediaInfo: manager.mediaInfo)
+            DisplayPreferencesView(
+                settings: settings,
+                mediaInfo: manager.mediaInfo,
+                audioQualityManager: audioQualityManager
+            )
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
                 .tabItem {
@@ -27,12 +32,18 @@ struct PreferencesView: View {
 private struct DisplayPreferencesView: View {
     @ObservedObject var settings: AppSettings
     let mediaInfo: MediaInfo?
+    @ObservedObject var audioQualityManager: AudioQualityManager
     @State private var maximumCharactersInput: String
     @FocusState private var isMaximumCharactersFieldFocused: Bool
 
-    init(settings: AppSettings, mediaInfo: MediaInfo?) {
+    init(
+        settings: AppSettings,
+        mediaInfo: MediaInfo?,
+        audioQualityManager: AudioQualityManager
+    ) {
         _settings = ObservedObject(wrappedValue: settings)
         self.mediaInfo = mediaInfo
+        _audioQualityManager = ObservedObject(wrappedValue: audioQualityManager)
         _maximumCharactersInput = State(initialValue: String(settings.maximumCharacters))
     }
 
@@ -47,7 +58,8 @@ private struct DisplayPreferencesView: View {
             scrollingEnabled: settings.scrollingEnabled,
             marqueeMode: settings.marqueeMode,
             scrollingSpeed: settings.scrollingSpeed,
-            fontWeight: settings.fontWeight
+            fontWeight: settings.fontWeight,
+            audioQuality: audioQualityManager.quality
         )
     }
 
@@ -148,6 +160,34 @@ private struct DisplayPreferencesView: View {
                 }
             }
 
+            Section("音质识别") {
+                Toggle(
+                    "显示Apple Music音质",
+                    isOn: Binding(
+                        get: { settings.audioQualityRecognitionEnabled },
+                        set: { enabled in
+                            audioQualityManager.setRecognitionEnabled(
+                                enabled,
+                                promptForPermission: enabled
+                            )
+                        }
+                    )
+                )
+
+                if settings.audioQualityRecognitionEnabled {
+                    Text("开启后需保持Apple Music处于前台或最小化状态。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if audioQualityManager.unavailableReason == .accessibilityPermissionRequired {
+                        Button("打开辅助功能设置") {
+                            AccessibilitySettingsOpener.open()
+                        }
+                        .controlSize(.small)
+                    }
+                }
+            }
+
             Section("效果预览") {
                 HStack(spacing: 6) {
                     Image(systemName: previewPresentation.iconName)
@@ -157,6 +197,9 @@ private struct DisplayPreferencesView: View {
                                 width: previewPresentation.textViewportWidth,
                                 height: 18
                             )
+                    }
+                    if let quality = audioQualityManager.quality {
+                        QualityBadgeView(tier: quality.tier)
                     }
                 }
                 .font(.system(size: 13))

@@ -6,6 +6,8 @@ struct StatusBarPresentation {
     let fullText: String
     let isHidden: Bool
     let iconName: String
+    let qualityBadge: AudioQualityTier?
+    let qualityBadgeWidth: CGFloat
     let accessibilityLabel: String
     let statusItemLength: CGFloat
     let textViewportWidth: CGFloat
@@ -24,7 +26,8 @@ struct StatusBarPresentation {
         scrollingEnabled: Bool = true,
         marqueeMode: MarqueeMode = .loop,
         scrollingSpeed: Double = 28,
-        fontWeight: MenuBarFontWeight = .medium
+        fontWeight: MenuBarFontWeight = .medium,
+        audioQuality: VerifiedAudioQuality? = nil
     ) {
         fullText = displayMode.text(for: mediaInfo) ?? ""
         isHidden = mediaInfo == nil && hideStatusItemWhenNoMedia
@@ -40,6 +43,8 @@ struct StatusBarPresentation {
         self.marqueeMode = marqueeMode
         self.scrollingSpeed = CGFloat(scrollingSpeed)
         self.fontWeight = fontWeight
+        qualityBadge = audioQuality?.tier
+        qualityBadgeWidth = audioQuality?.tier.badgeWidth ?? 0
 
         if mediaInfo == nil {
             iconName = "zzz"
@@ -54,14 +59,23 @@ struct StatusBarPresentation {
             }
         }
 
-        accessibilityLabel = fullText.isEmpty ? "NowPlayingBar" : "NowPlayingBar: \(fullText)"
+        let qualityAccessibilityText = audioQuality.map { ", \($0.tier.displayName)" } ?? ""
+        accessibilityLabel = fullText.isEmpty
+            ? "NowPlayingBar\(qualityAccessibilityText)"
+            : "NowPlayingBar: \(fullText)\(qualityAccessibilityText)"
 
         if isHidden {
             textViewportWidth = 0
             statusItemLength = 0
         } else if title.isEmpty {
             textViewportWidth = 0
-            statusItemLength = 24
+            statusItemLength = qualityBadge == nil
+                ? 24
+                : MenuBarLayout.horizontalPadding
+                    + MenuBarLayout.iconWidth
+                    + 5
+                    + qualityBadgeWidth
+                    + MenuBarLayout.horizontalPadding
         } else {
             if shouldScroll {
                 textViewportWidth = MarqueeMetrics.menuBar(
@@ -85,6 +99,7 @@ struct StatusBarPresentation {
                 + MenuBarLayout.iconWidth
                 + MenuBarLayout.iconTextSpacing
                 + textViewportWidth
+                + (qualityBadge == nil ? 0 : 5 + qualityBadgeWidth)
                 + MenuBarLayout.horizontalPadding
         }
     }
@@ -97,6 +112,7 @@ final class StatusBarPresentationObserver {
     init(
         manager: NowPlayingManager,
         settings: AppSettings,
+        audioQualityManager: AudioQualityManager? = nil,
         onChange: @escaping (StatusBarPresentation) -> Void
     ) {
         let displaySettings = Publishers.CombineLatest4(
@@ -111,21 +127,27 @@ final class StatusBarPresentationObserver {
             settings.$fontWeight
         )
 
+        let qualityPublisher = audioQualityManager?.$quality
+            .eraseToAnyPublisher()
+            ?? Just<VerifiedAudioQuality?>(nil).eraseToAnyPublisher()
+        let playback = Publishers.CombineLatest(manager.$mediaInfo, qualityPublisher)
+
         cancellable = Publishers.CombineLatest3(
-            manager.$mediaInfo,
+            playback,
             displaySettings,
             animationSettings
         )
-        .map { mediaInfo, displaySettings, animationSettings in
+        .map { playback, displaySettings, animationSettings in
             StatusBarPresentation(
-                mediaInfo: mediaInfo,
+                mediaInfo: playback.0,
                 displayMode: displaySettings.0,
                 hideStatusItemWhenNoMedia: displaySettings.1,
                 maximumCharacters: displaySettings.2,
                 scrollingEnabled: displaySettings.3,
                 marqueeMode: animationSettings.0,
                 scrollingSpeed: animationSettings.1,
-                fontWeight: animationSettings.2
+                fontWeight: animationSettings.2,
+                audioQuality: playback.1
             )
         }
         .sink(receiveValue: onChange)

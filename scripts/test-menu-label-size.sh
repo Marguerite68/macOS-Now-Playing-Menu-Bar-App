@@ -17,11 +17,17 @@ swiftc \
     -module-cache-path "$MODULE_CACHE_DIR" \
     -o "$BUILD_DIR/MenuBarSizingHarness" \
     "$PROJECT_DIR/Sources/NowPlayingBar/Models/AppSettings.swift" \
+    "$PROJECT_DIR/Sources/NowPlayingBar/Models/AudioQuality.swift" \
     "$PROJECT_DIR/Sources/NowPlayingBar/Models/MediaInfo.swift" \
     "$PROJECT_DIR/Sources/NowPlayingBar/Models/StatusBarPresentation.swift" \
     "$PROJECT_DIR/Sources/NowPlayingBar/Providers/MediaProvider.swift" \
+    "$PROJECT_DIR/Sources/NowPlayingBar/Providers/AudioQualityProvider.swift" \
+    "$PROJECT_DIR/Sources/NowPlayingBar/Providers/AppleMusicAccessibilityQualityProvider.swift" \
     "$PROJECT_DIR/Sources/NowPlayingBar/Managers/NowPlayingManager.swift" \
+    "$PROJECT_DIR/Sources/NowPlayingBar/Managers/AudioQualityManager.swift" \
     "$PROJECT_DIR/Sources/NowPlayingBar/Utilities/MarqueeMetrics.swift" \
+    "$PROJECT_DIR/Sources/NowPlayingBar/Utilities/AudioQualityBadgeAsset.swift" \
+    "$PROJECT_DIR/Sources/NowPlayingBar/Utilities/DetailsPanelLayout.swift" \
     "$PROJECT_DIR/scripts/MenuBarSizingHarness.swift"
 
 "$BUILD_DIR/MenuBarSizingHarness"

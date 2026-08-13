@@ -169,12 +169,15 @@ final class MarqueeLayerView: NSView {
 final class StatusItemContentView: NSView {
     private let iconView = NSImageView()
     private let marqueeView = MarqueeLayerView()
+    private let qualityBadgeView = QualityBadgeNSView()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         addSubview(iconView)
         addSubview(marqueeView)
+        addSubview(qualityBadgeView)
         iconView.imageScaling = .scaleProportionallyDown
+        qualityBadgeView.isHidden = true
     }
 
     @available(*, unavailable)
@@ -195,11 +198,20 @@ final class StatusItemContentView: NSView {
             width: MenuBarLayout.iconWidth,
             height: MenuBarLayout.iconWidth
         )
+        let badgeSpacing: CGFloat = qualityBadgeView.isHidden ? 0 : 5
+        let badgeWidth = qualityBadgeView.isHidden ? 0 : qualityBadgeView.badgeWidth
+        qualityBadgeView.frame = CGRect(
+            x: bounds.width - MenuBarLayout.horizontalPadding - badgeWidth,
+            y: floor((bounds.height - 14) / 2),
+            width: badgeWidth,
+            height: 14
+        )
         marqueeView.frame = CGRect(
             x: iconView.frame.maxX + MenuBarLayout.iconTextSpacing,
             y: 0,
             width: max(0, bounds.width - iconView.frame.maxX
-                - MenuBarLayout.iconTextSpacing - MenuBarLayout.horizontalPadding),
+                - MenuBarLayout.iconTextSpacing - MenuBarLayout.horizontalPadding
+                - badgeSpacing - badgeWidth),
             height: bounds.height
         )
     }
@@ -211,9 +223,81 @@ final class StatusItemContentView: NSView {
         )
         image?.isTemplate = true
         iconView.image = image
+        qualityBadgeView.update(tier: presentation.qualityBadge)
         marqueeView.isHidden = presentation.title.isEmpty
         marqueeView.update(with: presentation)
         needsLayout = true
+    }
+}
+
+@MainActor
+private final class QualityBadgeNSView: NSView {
+    private var tier: AudioQualityTier?
+    private let imageView = NSImageView()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        imageView.imageScaling = .scaleProportionallyDown
+        imageView.contentTintColor = .labelColor
+        addSubview(imageView)
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    var badgeWidth: CGFloat {
+        tier?.badgeWidth ?? 0
+    }
+
+    override var isFlipped: Bool { true }
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func layout() {
+        super.layout()
+        imageView.frame = bounds
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        imageView.contentTintColor = .labelColor
+        needsDisplay = true
+    }
+
+    func update(tier: AudioQualityTier?) {
+        guard self.tier != tier else { return }
+        self.tier = tier
+        isHidden = tier == nil
+        imageView.image = tier.flatMap(AudioQualityBadgeAsset.image(for:))
+        imageView.isHidden = imageView.image == nil
+        needsDisplay = true
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard let tier else { return }
+
+        guard imageView.image == nil else { return }
+
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 3, yRadius: 3)
+        NSColor.labelColor.withAlphaComponent(0.82).setStroke()
+        path.lineWidth = 1
+        path.stroke()
+
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 7.5, weight: .semibold),
+            .foregroundColor: NSColor.labelColor,
+            .paragraphStyle: paragraph,
+            .kern: 0.2
+        ]
+        (tier.badgeText as NSString).draw(
+            in: CGRect(x: 1, y: 2.2, width: bounds.width - 2, height: 10),
+            withAttributes: attributes
+        )
     }
 }
 

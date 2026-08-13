@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AlbumArtworkView: View {
     let mediaInfo: MediaInfo
+    var size: CGFloat = 84
 
     var body: some View {
         Group {
@@ -35,7 +36,7 @@ struct AlbumArtworkView: View {
             }
         }
         .id(mediaInfo.id)
-        .frame(width: 84, height: 84)
+        .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
         .accessibilityLabel("\(mediaInfo.title) 的歌曲封面")
     }

@@ -1,16 +1,28 @@
 import AppKit
+import Combine
 import SwiftUI
 
 @MainActor
 final class DetailsPanelController: NSObject {
-    private let contentSize = NSSize(width: 300, height: 116)
+    private var contentSize: NSSize
     private let panel: NSPanel
+    private var sizeCancellable: AnyCancellable?
     private var localMouseMonitor: Any?
     private var globalMouseMonitor: Any?
 
-    init(manager: NowPlayingManager) {
+    init(
+        manager: NowPlayingManager,
+        settings: AppSettings,
+        audioQualityManager: AudioQualityManager
+    ) {
+        contentSize = NSSize(
+            width: 300,
+            height: DetailsPanelLayout.height(
+                recognitionEnabled: settings.audioQualityRecognitionEnabled
+            )
+        )
         panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: NSSize(width: 300, height: 116)),
+            contentRect: NSRect(origin: .zero, size: contentSize),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -26,7 +38,13 @@ final class DetailsPanelController: NSObject {
         materialView.layer?.cornerCurve = .continuous
         materialView.layer?.masksToBounds = true
 
-        let hostingView = NSHostingView(rootView: NowPlayingDetailsView(manager: manager))
+        let hostingView = NSHostingView(
+            rootView: NowPlayingDetailsView(
+                manager: manager,
+                settings: settings,
+                audioQualityManager: audioQualityManager
+            )
+        )
         hostingView.frame = materialView.bounds
         hostingView.autoresizingMask = [.width, .height]
         materialView.addSubview(hostingView)
@@ -42,6 +60,24 @@ final class DetailsPanelController: NSObject {
         panel.hasShadow = false
         panel.level = .popUpMenu
         panel.collectionBehavior = [.transient, .stationary, .fullScreenAuxiliary]
+
+        sizeCancellable = settings.$audioQualityRecognitionEnabled
+            .removeDuplicates()
+            .sink { [weak self] enabled in
+                self?.updateContentHeight(
+                    DetailsPanelLayout.height(recognitionEnabled: enabled)
+                )
+            }
+    }
+
+    private func updateContentHeight(_ height: CGFloat) {
+        guard contentSize.height != height else { return }
+        contentSize.height = height
+        var frame = panel.frame
+        frame.origin.y -= height - frame.height
+        frame.size.height = height
+        panel.setFrame(frame, display: panel.isVisible, animate: panel.isVisible)
+        panel.contentView?.frame = NSRect(origin: .zero, size: contentSize)
     }
 
     var isShown: Bool {

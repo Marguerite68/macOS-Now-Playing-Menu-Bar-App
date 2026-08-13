@@ -4,7 +4,7 @@ import Foundation
 @main
 @MainActor
 struct MenuBarSizingHarness {
-    static func main() {
+    static func main() async {
         let text = "Blinding Lights · The Weeknd"
         let metrics = MarqueeMetrics.menuBar(text: text)
         guard metrics.textWidth > 0,
@@ -157,6 +157,138 @@ struct MenuBarSizingHarness {
             fputs("FAIL: hide-when-idle setting is not off by default\n", stderr)
             exit(1)
         }
+        guard defaultSettings.audioQualityRecognitionEnabled == false else {
+            fputs("FAIL: audio-quality recognition is not off by default\n", stderr)
+            exit(1)
+        }
+
+        guard AudioQualityDetailsState(
+            recognitionEnabled: false,
+            quality: nil,
+            unavailableReason: .noPlaybackEvidence
+        ) == .hidden else {
+            fputs("FAIL: disabled recognition still exposed quality details\n", stderr)
+            exit(1)
+        }
+        guard DetailsPanelLayout.height(recognitionEnabled: true) < 154,
+              DetailsPanelLayout.artworkSize(recognitionEnabled: true) > 84,
+              DetailsPanelLayout.height(recognitionEnabled: true)
+                == DetailsPanelLayout.artworkSize(recognitionEnabled: true)
+                    + DetailsPanelLayout.padding(recognitionEnabled: true) * 2 else {
+            fputs("FAIL: quality detail layout does not use equal outer spacing\n", stderr)
+            exit(1)
+        }
+
+        let losslessQuality = VerifiedAudioQuality(
+            tier: .lossless,
+            sampleRate: 44_100,
+            bitDepth: 16,
+            bitRate: nil,
+            evidenceDescription: "无损",
+            providerIdentifier: "harness"
+        )
+        let qualityPresentation = StatusBarPresentation(
+            mediaInfo: mediaInfo,
+            displayMode: .title,
+            audioQuality: losslessQuality
+        )
+        guard qualityPresentation.qualityBadge == .lossless,
+              qualityPresentation.qualityBadgeWidth > 0,
+              qualityPresentation.statusItemLength > presentation.statusItemLength - 100 else {
+            fputs("FAIL: verified quality did not produce a menu-bar badge\n", stderr)
+            exit(1)
+        }
+
+        let iconOnlyQualityPresentation = StatusBarPresentation(
+            mediaInfo: mediaInfo,
+            displayMode: .iconOnly,
+            audioQuality: losslessQuality
+        )
+        guard iconOnlyQualityPresentation.statusItemLength
+                >= MenuBarLayout.horizontalPadding * 2
+                    + MenuBarLayout.iconWidth
+                    + iconOnlyQualityPresentation.qualityBadgeWidth else {
+            fputs("FAIL: icon-only quality badge overlaps the media icon\n", stderr)
+            exit(1)
+        }
+
+        let parsedHiRes = AppleMusicAccessibilityQualityProvider.parseQuality(
+            from: ["Hi-Res Lossless", "24-bit / 96 kHz"],
+            providerIdentifier: "harness"
+        )
+        guard parsedHiRes?.tier == .hiResLossless,
+              parsedHiRes?.bitDepth == 24,
+              parsedHiRes?.sampleRate == 96_000 else {
+            fputs("FAIL: Hi-Res accessibility evidence was parsed incorrectly\n", stderr)
+            exit(1)
+        }
+
+        guard AppleMusicAccessibilityQualityProvider.parseQuality(
+            from: ["24-bit / 96 kHz"],
+            providerIdentifier: "harness"
+        ) == nil else {
+            fputs("FAIL: resolution without lossless evidence produced a badge\n", stderr)
+            exit(1)
+        }
+
+        let backgroundProvider = SequenceAudioQualityProvider(results: [
+            .verified(losslessQuality),
+            .unavailable(.providerUnavailable)
+        ])
+        let backgroundSettings = AppSettings(
+            transientDisplayMode: .title,
+            audioQualityRecognitionEnabled: true
+        )
+        let backgroundMediaProvider = HarnessMediaProvider()
+        let backgroundMediaManager = NowPlayingManager(provider: backgroundMediaProvider)
+        let backgroundQualityManager = AudioQualityManager(
+            mediaManager: backgroundMediaManager,
+            settings: backgroundSettings,
+            provider: backgroundProvider,
+            isAccessibilityTrusted: { true }
+        )
+        backgroundMediaProvider.publish(mediaInfo)
+        try? await Task.sleep(for: .milliseconds(500))
+        await backgroundQualityManager.refresh()
+        guard backgroundQualityManager.quality == losslessQuality else {
+            fputs("FAIL: closing the Music window discarded verified quality for the same track\n", stderr)
+            exit(1)
+        }
+        let nextTrack = MediaInfo(
+            id: "next-track",
+            title: "Next Track",
+            artist: "Artist",
+            album: nil,
+            application: .appleMusic,
+            playbackState: .playing
+        )
+        backgroundMediaProvider.publish(nextTrack)
+        guard backgroundQualityManager.quality == nil else {
+            fputs("FAIL: cached quality leaked into the next background track\n", stderr)
+            exit(1)
+        }
+
+        let pauseProvider = PlaybackStateAudioQualityProvider(quality: losslessQuality)
+        let pauseSettings = AppSettings(
+            transientDisplayMode: .title,
+            audioQualityRecognitionEnabled: true
+        )
+        let pauseMediaProvider = HarnessMediaProvider()
+        let pauseMediaManager = NowPlayingManager(provider: pauseMediaProvider)
+        let pauseQualityManager = AudioQualityManager(
+            mediaManager: pauseMediaManager,
+            settings: pauseSettings,
+            provider: pauseProvider,
+            isAccessibilityTrusted: { true }
+        )
+        pauseMediaProvider.publish(mediaInfo)
+        await pauseQualityManager.refresh()
+        pauseMediaProvider.publish(mediaInfo.replacingPlaybackState(with: .paused))
+        await pauseQualityManager.refresh()
+        guard pauseQualityManager.quality == losslessQuality else {
+            fputs("FAIL: pausing discarded verified quality for the current track\n", stderr)
+            exit(1)
+        }
 
         settings.hideStatusItemWhenNoMedia = true
         guard observedPresentation?.isHidden == true else {
@@ -215,6 +347,35 @@ struct MenuBarSizingHarness {
         withExtendedLifetime(observer) {}
 
         print("PASS: marquee size, display modes, and status-item presentation are valid")
+    }
+}
+
+private actor SequenceAudioQualityProvider: AudioQualityProvider {
+    let identifier = "sequence-harness"
+    private var results: [AudioQualityProviderResult]
+
+    init(results: [AudioQualityProviderResult]) {
+        self.results = results
+    }
+
+    func currentQuality(for mediaInfo: MediaInfo) async -> AudioQualityProviderResult {
+        guard !results.isEmpty else { return .unavailable(.providerUnavailable) }
+        return results.removeFirst()
+    }
+}
+
+private actor PlaybackStateAudioQualityProvider: AudioQualityProvider {
+    let identifier = "playback-state-harness"
+    let quality: VerifiedAudioQuality
+
+    init(quality: VerifiedAudioQuality) {
+        self.quality = quality
+    }
+
+    func currentQuality(for mediaInfo: MediaInfo) async -> AudioQualityProviderResult {
+        mediaInfo.playbackState == .playing
+            ? .verified(quality)
+            : .unavailable(.noCurrentMedia)
     }
 }
 

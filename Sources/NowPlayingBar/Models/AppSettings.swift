@@ -95,6 +95,8 @@ final class AppSettings: ObservableObject {
         static let marqueeMode = "marqueeMode"
         static let scrollingSpeed = "scrollingSpeed"
         static let fontWeight = "fontWeight"
+        static let audioQualityRecognitionEnabled = "audioQualityRecognitionEnabled"
+        static let didRequestAudioQualityAccessibility = "didRequestAudioQualityAccessibility"
     }
 
     @Published var displayMode: MenuBarDisplayMode {
@@ -123,6 +125,24 @@ final class AppSettings: ObservableObject {
 
     @Published var fontWeight: MenuBarFontWeight {
         didSet { defaults.set(fontWeight.rawValue, forKey: Key.fontWeight) }
+    }
+
+    @Published var audioQualityRecognitionEnabled: Bool {
+        didSet {
+            defaults.set(
+                audioQualityRecognitionEnabled,
+                forKey: Key.audioQualityRecognitionEnabled
+            )
+        }
+    }
+
+    var didRequestAudioQualityAccessibility: Bool {
+        didSet {
+            defaults.set(
+                didRequestAudioQualityAccessibility,
+                forKey: Key.didRequestAudioQualityAccessibility
+            )
+        }
     }
 
     private let defaults: UserDefaults
@@ -155,6 +175,12 @@ final class AppSettings: ObservableObject {
         )
         fontWeight = defaults.string(forKey: Key.fontWeight)
             .flatMap(MenuBarFontWeight.init(rawValue:)) ?? .medium
+        audioQualityRecognitionEnabled = defaults.bool(
+            forKey: Key.audioQualityRecognitionEnabled
+        )
+        didRequestAudioQualityAccessibility = defaults.bool(
+            forKey: Key.didRequestAudioQualityAccessibility
+        )
     }
 
     init(
@@ -164,7 +190,8 @@ final class AppSettings: ObservableObject {
         scrollingEnabled: Bool = true,
         marqueeMode: MarqueeMode = .loop,
         scrollingSpeed: Double = 28,
-        fontWeight: MenuBarFontWeight = .medium
+        fontWeight: MenuBarFontWeight = .medium,
+        audioQualityRecognitionEnabled: Bool = false
     ) {
         defaults = .standard
         displayMode = transientDisplayMode
@@ -174,5 +201,7 @@ final class AppSettings: ObservableObject {
         self.marqueeMode = marqueeMode
         self.scrollingSpeed = scrollingSpeed
         self.fontWeight = fontWeight
+        self.audioQualityRecognitionEnabled = audioQualityRecognitionEnabled
+        didRequestAudioQualityAccessibility = false
     }
 }

@@ -5,16 +5,26 @@ import SwiftUI
 final class StatusBarController: NSObject, ObservableObject {
     private let manager: NowPlayingManager
     private let settings: AppSettings
+    private let audioQualityManager: AudioQualityManager
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let statusItemContentView = StatusItemContentView()
     private let detailsPanel: DetailsPanelController
     private var preferencesWindowController: PreferencesWindowController?
     private var presentationObserver: StatusBarPresentationObserver?
 
-    init(manager: NowPlayingManager, settings: AppSettings) {
+    init(
+        manager: NowPlayingManager,
+        settings: AppSettings,
+        audioQualityManager: AudioQualityManager
+    ) {
         self.manager = manager
         self.settings = settings
-        detailsPanel = DetailsPanelController(manager: manager)
+        self.audioQualityManager = audioQualityManager
+        detailsPanel = DetailsPanelController(
+            manager: manager,
+            settings: settings,
+            audioQualityManager: audioQualityManager
+        )
         super.init()
 
         configureStatusButton()
@@ -41,7 +51,8 @@ final class StatusBarController: NSObject, ObservableObject {
     private func observePresentationChanges() {
         presentationObserver = StatusBarPresentationObserver(
             manager: manager,
-            settings: settings
+            settings: settings,
+            audioQualityManager: audioQualityManager
         ) { [weak self] presentation in
             self?.updateStatusButton(with: presentation)
         }
@@ -116,7 +127,8 @@ final class StatusBarController: NSObject, ObservableObject {
         if preferencesWindowController == nil {
             preferencesWindowController = PreferencesWindowController(
                 settings: settings,
-                manager: manager
+                manager: manager,
+                audioQualityManager: audioQualityManager
             )
         }
 
@@ -125,14 +137,25 @@ final class StatusBarController: NSObject, ObservableObject {
     }
 
     @objc private func quitApplication() {
-        NSApplication.shared.terminate(nil)
+        Task { [audioQualityManager] in
+            await audioQualityManager.stopMonitoring()
+            NSApplication.shared.terminate(nil)
+        }
     }
 }
 
 @MainActor
 private final class PreferencesWindowController: NSWindowController {
-    init(settings: AppSettings, manager: NowPlayingManager) {
-        let rootView = PreferencesView(settings: settings, manager: manager)
+    init(
+        settings: AppSettings,
+        manager: NowPlayingManager,
+        audioQualityManager: AudioQualityManager
+    ) {
+        let rootView = PreferencesView(
+            settings: settings,
+            manager: manager,
+            audioQualityManager: audioQualityManager
+        )
         let hostingController = NSHostingController(rootView: rootView)
         let window = NSWindow(contentViewController: hostingController)
 
