@@ -175,7 +175,7 @@ private struct DisplayPreferencesView: View {
                 )
 
                 if settings.audioQualityRecognitionEnabled {
-                    Text("开启后需保持Apple Music处于前台或最小化状态。")
+                    Text("为保证识别稳定性，开启后建议保持Apple Music处于前台或最小化状态。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 

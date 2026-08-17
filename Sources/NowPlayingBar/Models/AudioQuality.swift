@@ -56,9 +56,9 @@ enum AudioQualityUnavailableReason: Equatable, Sendable {
         case .noCurrentMedia:
             "当前没有正在播放、可用于识别音质的 Apple Music 曲目。"
         case .unsupportedSource:
-            "当前媒体来源暂未提供音质识别。首版仅支持 Apple Music。"
+            "当前媒体来源暂未提供音质识别。识别仅支持 Apple Music。"
         case .noPlaybackEvidence:
-            "Music 当前播放控件没有提供可验证的无损标识。可能是普通音质，也可能是当前版本的 Music 未向辅助功能公开该信息。"
+            "Music 当前播放控件没有提供可验证的音质信息。在大部份情况下，这表明目前播放的曲目为普通音质（最高为AAC 256kbps），也有较小可能性是当前版本的 Music 未向辅助功能公开该信息。"
         case .providerUnavailable:
             "暂时无法读取 Music 的播放控件。NowPlayingBar 会尝试维持一个最小化的 Music 窗口用于后台识别；若仍失败，可重新打开 Music 后再试。"
         }
